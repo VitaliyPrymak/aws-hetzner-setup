@@ -1,0 +1,72 @@
+---
+- name: Install OpenVPN dependencies
+  apt:
+    name:
+      - ca-certificates
+      - gnupg
+      - iptables
+      - openssl
+      - wget
+      - curl
+      - net-tools
+      - htop
+    update_cache: yes
+    state: present
+
+- name: Install OpenVPN
+  apt:
+    name: openvpn
+    state: present
+
+- name: Create CCD directory
+  file:
+    path: /etc/openvpn/ccd
+    state: directory
+    mode: '0755'
+
+- name: Include VPN route config task
+  include_tasks: vpn-route.yml
+
+- name: Create OpenVPN log directory
+  file:
+    path: /var/log/openvpn
+    state: directory
+    mode: '0755'
+
+- name: Create OpenVPN server config directory
+  file:
+    path: /etc/openvpn/server
+    state: directory
+    mode: '0755'
+
+- name: Check if easy-rsa is already initialised
+  stat:
+    path: /etc/openvpn/server/easy-rsa/easyrsa
+  register: easy_rsa
+
+- name: Run easy-rsa setup
+  include_tasks: easy-rsa.yml
+  when: not easy_rsa.stat.exists
+
+- name: Copy management scripts
+  include_tasks: bash.yml
+
+- name: Enable IPv4 forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+
+- name: Enable IPv6 forwarding
+  sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: 1
+
+- name: Deploy OpenVPN server config
+  include_tasks: vpn.yml
+
+- name: Disable default openvpn@server unit
+  systemd:
+    name: openvpn@server
+    state: stopped
+    enabled: no
+  ignore_errors: true

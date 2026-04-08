@@ -1,0 +1,27 @@
+---
+github_runner_enabled: false
+
+github_runner_user: github-runner
+github_runner_group: github-runner
+github_runner_dir: /opt/actions-runner
+github_runner_workdir: _work
+
+github_runner_version: "2.324.0"
+github_runner_arch: x64
+github_runner_platform: linux
+
+# Required when github_runner_enabled=true
+github_runner_url: ""
+github_runner_token: ""
+github_runner_api_pat: ""
+github_runner_api_base: "https://api.github.com"
+
+# Optional
+github_runner_name: "{{ inventory_hostname }}"
+github_runner_labels:
+  - self-hosted
+  - linux
+  - ubuntu
+  - staging
+  - hetzner
+github_runner_runnergroup: ""

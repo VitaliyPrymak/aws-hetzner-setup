@@ -1,0 +1,34 @@
+---
+- name: Deploy server.conf
+  template:
+    src: server.conf.j2
+    dest: /etc/openvpn/server/{{ vpn.vpn_port }}server.conf
+
+- name: Create symlink for server.conf
+  file:
+    src: /etc/openvpn/server/{{ vpn.vpn_port }}server.conf
+    dest: /etc/openvpn/{{ vpn.vpn_port }}server.conf
+    state: link
+
+- name: Deploy client config template
+  template:
+    src: client-template.txt.j2
+    dest: /etc/openvpn/client-template.txt
+
+- name: Deploy iptables systemd service
+  template:
+    src: iptables.service.j2
+    dest: /etc/systemd/system/openvpn-iptables{{ vpn.vpn_port }}.service
+
+- name: Start and enable iptables service
+  systemd:
+    state: started
+    name: openvpn-iptables{{ vpn.vpn_port }}
+    enabled: yes
+    daemon_reload: yes
+
+- name: Enable and start OpenVPN
+  systemd:
+    name: openvpn@{{ vpn.vpn_port }}server
+    state: started
+    enabled: yes

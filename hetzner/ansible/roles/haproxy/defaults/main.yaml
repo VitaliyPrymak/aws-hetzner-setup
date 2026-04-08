@@ -1,0 +1,3 @@
+---
+haproxy_stats_port: 20000
+haproxy_prometheus_port: 8405

@@ -1,0 +1,13 @@
+**/.terraform/*
+**/*.tfstate
+**/*.tfstate.*
+**/crash.log
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/*.tfvars
+**/*.tfvars.json
+**/backend.hcl
+**/backend.tfvars
+hetzner/ansible/group_vars/all/vault.yml

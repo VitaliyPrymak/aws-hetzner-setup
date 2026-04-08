@@ -1,0 +1,89 @@
+---
+- name: Remove old easy-rsa bundled with openvpn
+  file:
+    path: /etc/openvpn/easy-rsa/
+    state: absent
+
+- name: Generate DH parameters
+  command: openssl dhparam -out /etc/openvpn/server/dh.pem 2048
+  args:
+    creates: /etc/openvpn/server/dh.pem
+
+- name: Create easy-rsa directory
+  file:
+    path: /etc/openvpn/server/easy-rsa
+    state: directory
+    mode: '0755'
+
+- name: Download easy-rsa {{ vpn.vpn_rsa_version }}
+  unarchive:
+    src: "https://github.com/OpenVPN/easy-rsa/releases/download/v{{ vpn.vpn_rsa_version }}/EasyRSA-{{ vpn.vpn_rsa_version }}.tgz"
+    dest: /etc/openvpn/server/easy-rsa
+    remote_src: yes
+    extra_opts:
+      - --strip-components=1
+
+- name: Initialise PKI
+  shell: /etc/openvpn/server/easy-rsa/easyrsa init-pki
+  args:
+    chdir: /etc/openvpn/server/easy-rsa
+    creates: /etc/openvpn/server/easy-rsa/pki
+
+- name: Build CA (no password)
+  shell: /etc/openvpn/server/easy-rsa/easyrsa --batch build-ca nopass
+  args:
+    chdir: /etc/openvpn/server/easy-rsa
+    creates: /etc/openvpn/server/easy-rsa/pki/ca.crt
+
+- name: Build server certificate
+  shell: EASYRSA_CERT_EXPIRE=3650 /etc/openvpn/server/easy-rsa/easyrsa --batch build-server-full server nopass
+  args:
+    chdir: /etc/openvpn/server/easy-rsa
+    creates: /etc/openvpn/server/easy-rsa/pki/issued/server.crt
+
+- name: Generate CRL
+  shell: EASYRSA_CRL_DAYS=3650 /etc/openvpn/server/easy-rsa/easyrsa gen-crl
+  args:
+    chdir: /etc/openvpn/server/easy-rsa
+    creates: /etc/openvpn/server/easy-rsa/pki/crl.pem
+
+- name: Generate tls-crypt key
+  shell: openvpn --genkey --secret /etc/openvpn/server/easy-rsa/tc.key
+  args:
+    creates: /etc/openvpn/server/easy-rsa/tc.key
+
+- name: Hard-link ca.crt
+  file:
+    src: /etc/openvpn/server/easy-rsa/pki/ca.crt
+    dest: /etc/openvpn/server/ca.crt
+    state: hard
+
+- name: Hard-link ca.key
+  file:
+    src: /etc/openvpn/server/easy-rsa/pki/private/ca.key
+    dest: /etc/openvpn/server/ca.key
+    state: hard
+
+- name: Hard-link tc.key
+  file:
+    src: /etc/openvpn/server/easy-rsa/tc.key
+    dest: /etc/openvpn/server/tc.key
+    state: hard
+
+- name: Hard-link crl.pem
+  file:
+    src: /etc/openvpn/server/easy-rsa/pki/crl.pem
+    dest: /etc/openvpn/server/crl.pem
+    state: hard
+
+- name: Hard-link server.crt
+  file:
+    src: /etc/openvpn/server/easy-rsa/pki/issued/server.crt
+    dest: /etc/openvpn/server/server.crt
+    state: hard
+
+- name: Hard-link server.key
+  file:
+    src: /etc/openvpn/server/easy-rsa/pki/private/server.key
+    dest: /etc/openvpn/server/server.key
+    state: hard

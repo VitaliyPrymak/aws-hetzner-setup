@@ -1,0 +1,31 @@
+[Unit]
+Before=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/iptables -t nat -A POSTROUTING -s {{ vpn.vpn_server_ip_mask }} -d {{ vpn.vpn_server_ip_mask }} -j SNAT --to {{ vpn.vpn_gw }}
+ExecStart=/sbin/iptables -t nat -A POSTROUTING -s {{ vpn.vpn_server_ip_mask }} -d {{ hetzner_private_lan_cidr | default('10.0.1.0/24') }} -j SNAT --to-source {{ hetzner_edge_private_ip | default('10.0.1.2') }}
+ExecStart=/sbin/iptables -t nat -A POSTROUTING -s {{ vpn.vpn_server_ip_mask }} ! -d {{ vpn.vpn_server_ip_mask }} -j SNAT --to {{ vpn.vpn_ip }}
+ExecStart=/sbin/iptables -I INPUT -p {{ vpn.vpn_protocol }} --dport {{ vpn.vpn_port }} -j ACCEPT
+ExecStart=/sbin/iptables -I FORWARD -s {{ vpn.vpn_server_ip_mask }} -j ACCEPT
+ExecStart=/sbin/iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+{% if openvpn_redirect_gateway_ipv6 | default(false) %}
+ExecStart=/sbin/ip6tables -I FORWARD -s {{ vpn.vpn_ipv6_server_cidr }} -j ACCEPT
+ExecStart=/sbin/ip6tables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+ExecStart=/sbin/ip6tables -t nat -A POSTROUTING -s {{ vpn.vpn_ipv6_server_cidr }} ! -d {{ vpn.vpn_ipv6_server_cidr }} -j MASQUERADE
+{% endif %}
+{% if openvpn_redirect_gateway_ipv6 | default(false) %}
+ExecStop=/sbin/ip6tables -t nat -D POSTROUTING -s {{ vpn.vpn_ipv6_server_cidr }} ! -d {{ vpn.vpn_ipv6_server_cidr }} -j MASQUERADE
+ExecStop=/sbin/ip6tables -D FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+ExecStop=/sbin/ip6tables -D FORWARD -s {{ vpn.vpn_ipv6_server_cidr }} -j ACCEPT
+{% endif %}
+ExecStop=/sbin/iptables -D FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+ExecStop=/sbin/iptables -D FORWARD -s {{ vpn.vpn_server_ip_mask }} -j ACCEPT
+ExecStop=/sbin/iptables -D INPUT -p {{ vpn.vpn_protocol }} --dport {{ vpn.vpn_port }} -j ACCEPT
+ExecStop=/sbin/iptables -t nat -D POSTROUTING -s {{ vpn.vpn_server_ip_mask }} ! -d {{ vpn.vpn_server_ip_mask }} -j SNAT --to {{ vpn.vpn_ip }}
+ExecStop=/sbin/iptables -t nat -D POSTROUTING -s {{ vpn.vpn_server_ip_mask }} -d {{ hetzner_private_lan_cidr | default('10.0.1.0/24') }} -j SNAT --to-source {{ hetzner_edge_private_ip | default('10.0.1.2') }}
+ExecStop=/sbin/iptables -t nat -D POSTROUTING -s {{ vpn.vpn_server_ip_mask }} -d {{ vpn.vpn_server_ip_mask }} -j SNAT --to {{ vpn.vpn_gw }}
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

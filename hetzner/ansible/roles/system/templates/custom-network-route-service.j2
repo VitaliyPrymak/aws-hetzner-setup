@@ -1,0 +1,15 @@
+# templates/vpn-route.service.j2
+[Unit]
+Description=Add route to {{ vpn_subnet }} via {{ gateway_ip }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/ip route add {{ vpn_subnet }} via {{ gateway_ip }}
+ExecStop=/bin/ip route del {{ vpn_subnet }} via {{ gateway_ip }}
+ExecStopPost=/bin/true
+
+[Install]
+WantedBy=multi-user.target

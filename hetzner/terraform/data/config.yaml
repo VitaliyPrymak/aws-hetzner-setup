@@ -1,0 +1,32 @@
+cluster_name: my-staging-cluster
+ssh_user: ubuntu
+ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...changeme"
+
+default_packages:
+  - mc
+  - htop
+  - ncdu
+  - curl
+  - vim
+
+nodes:
+  - name: app-development
+    role: worker
+    server_type: cx23
+    image: ubuntu-24.04
+    location: nbg1
+
+  - name: github-runner
+    role: runner
+    server_type: cx23
+    image: ubuntu-24.04
+    location: nbg1
+
+  - name: app-edge
+    role: edge
+    server_type: cx23
+    image: ubuntu-24.04
+    location: nbg1
+    extra_packages:
+      - haproxy
+      - openvpn

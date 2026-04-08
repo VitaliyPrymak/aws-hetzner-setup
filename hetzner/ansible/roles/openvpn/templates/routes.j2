@@ -1,0 +1,12 @@
+push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS 8.8.8.8"
+{% if openvpn_server_public_ipv4 | default('') | length > 0 %}
+push "route {{ openvpn_server_public_ipv4 }} 255.255.255.255 net_gateway"
+{% endif %}
+push "route {{ openvpn_hetzner_private_route | default('10.0.1.0 255.255.255.0') }}"
+{% if openvpn_redirect_gateway | default(false) %}
+push "redirect-gateway def1 bypass-dhcp"
+{% endif %}
+{% if openvpn_redirect_gateway_ipv6 | default(false) %}
+push "redirect-gateway ipv6"
+{% endif %}

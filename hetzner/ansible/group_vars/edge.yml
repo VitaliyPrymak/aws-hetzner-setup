@@ -1,0 +1,20 @@
+---
+vpn:
+  vpn_ip: "{{ public_ip | default(ansible_host, true) }}"
+  vpn_port: 1194
+  vpn_protocol: udp
+  vpn_tun: tun0
+  vpn_server_cidr: "10.8.0.0 255.255.255.0"
+  vpn_ipv6_server_cidr: "fd42:42:42::/112"
+  vpn_server_ip_mask: "10.8.0.0/24"
+  vpn_gw: "10.8.0.1"
+  vpn_rsa_version: "3.1.7"
+
+openvpn_hetzner_private_route: "10.0.1.0 255.255.255.0"
+hetzner_private_lan_cidr: "10.0.1.0/24"
+hetzner_edge_private_ip: "10.0.1.2"
+
+openvpn_server_public_ipv4: "198.51.100.20"
+
+openvpn_redirect_gateway: true
+openvpn_redirect_gateway_ipv6: true

@@ -1,0 +1,53 @@
+---
+- name: Base system setup
+  hosts: all
+  become: true
+  roles:
+    - system
+
+- name: Install and configure VPN
+  hosts: app-edge
+  become: true
+  roles:
+    - openvpn
+    # - haproxy
+  tags: [haproxy, ovpn]
+
+- name: Install Docker on servers
+  hosts: runner, app-dev
+  become: true
+  tasks:
+    - name: Include docker installation tasks
+      ansible.builtin.include_role:
+        name: docker
+        tasks_from: main 
+  tags: [docker, install, worker]
+
+- name: Install and configure Nginx with Certs
+  hosts: app-dev
+  become: true
+  roles:
+    - nginx
+
+- name: Deploy applications with docker-compose
+  hosts: app-dev
+  become: true
+  tasks:
+    - name: Include docker deploy tasks
+      ansible.builtin.include_role:
+        name: docker
+        tasks_from: deploy
+  vars:
+    compose_project_dir: /opt/app
+    compose_files:
+      - docker-compose.yml
+  tags: [docker, deploy, apps]
+
+- name: Install GitHub self-hosted runner
+  hosts: runner
+  become: true
+  tasks:
+    - name: Include GitHub runner role
+      ansible.builtin.include_role:
+        name: runner
+  tags: [github_runner]

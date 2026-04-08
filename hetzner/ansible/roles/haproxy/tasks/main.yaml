@@ -1,0 +1,41 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: Install HAProxy
+  apt:
+    name: haproxy
+    state: present
+
+- name: Create HAProxy certs directory
+  ansible.builtin.file:
+    path: /etc/haproxy/certs
+    owner: haproxy
+    group: haproxy
+    state: directory
+    mode: '0755'
+
+- name: Deploy HAProxy configuration
+  template:
+    src: haproxy-cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: haproxy
+    group: haproxy
+    mode: 0644
+    validate: haproxy -f %s -c
+  notify: restart haproxy
+
+- name: Ensure HAProxy is started and enabled
+  systemd:
+    name: haproxy
+    state: started
+    enabled: yes

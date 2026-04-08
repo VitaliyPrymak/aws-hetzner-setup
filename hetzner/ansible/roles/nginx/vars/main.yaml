@@ -1,0 +1,14 @@
+---
+app_domain: "staging.example.com"
+admin_domain: "admin.staging.example.com"
+devops_admin_email: "ops@example.com"
+cloudflare_email: "ops@example.com"
+nginx_upstream_api_host: "127.0.0.1"
+nginx_upstream_api_port: 8080
+nginx_upstream_admin_host: "127.0.0.1"
+nginx_upstream_admin_port: 8000
+nginx_conf_dir: "/etc/nginx/sites-available"
+nginx_enabled_dir: "/etc/nginx/sites-enabled"
+letsencrypt_cert_dir: "/etc/letsencrypt/live/{{ app_domain }}"
+enable_firewall: false
+app_compose_frontend_port: 8080

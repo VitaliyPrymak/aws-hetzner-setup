@@ -1,0 +1,102 @@
+services:
+  frontend:
+    image: {{ compose_image_frontend }}
+    container_name: app-frontend
+    ports:
+      - "{{ app_compose_frontend_port | default(8081) }}:3000"
+    env_file:
+      - .env-frontend
+    networks:
+      - app-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+
+  admin:
+    image: {{ compose_image_admin }}
+    container_name: app-admin
+    ports:
+      - "8000:80"
+    env_file:
+      - .env-admin
+    networks:
+      - app-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+
+  api:
+    image: {{ compose_image_api }}
+    container_name: app-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1024M
+        reservations:
+          cpus: "0.20"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: app-postgres
+    env_file:
+      - .env-database
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    name: {{ compose_postgres_volume }}
+
+networks:
+  app-network:
+    name: {{ compose_network_name }}
+    external: true

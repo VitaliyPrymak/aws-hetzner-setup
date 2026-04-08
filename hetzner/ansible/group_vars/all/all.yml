@@ -1,0 +1,7 @@
+---
+users:
+  - user: deploy
+    sshkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...changeme deploy@example.com"
+
+root:
+  - sshkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...changeme root@example.com"

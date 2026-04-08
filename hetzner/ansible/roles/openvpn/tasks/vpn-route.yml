@@ -1,0 +1,6 @@
+---
+- name: Deploy VPN CCD DEFAULT (push routes to clients)
+  template:
+    src: routes.j2
+    dest: /etc/openvpn/ccd/DEFAULT
+  when: ansible_hostname is defined

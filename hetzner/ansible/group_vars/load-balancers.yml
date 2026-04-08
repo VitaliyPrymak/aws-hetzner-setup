@@ -1,0 +1,7 @@
+---
+haproxy_stats_port: 20000
+haproxy_prometheus_port: 8405
+haproxy_stats_password: "changeme-strong-stats-password"
+private_ips:
+  app-development: "10.0.1.1"
+  app-edge: "10.0.1.2"

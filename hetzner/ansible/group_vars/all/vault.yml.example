@@ -1,0 +1,6 @@
+# ansible-vault encrypt → save as vault.yml (gitignored in real projects).
+# ansible-vault encrypt vault.yml.example → vault.yml
+
+vault_db_password: "changeme"
+vault_monopay_secret: "changeme"
+# Add any other secrets your roles expect.

@@ -1,0 +1,5 @@
+#!/bin/bash
+G="\e[1;32m"
+SAY=$(/usr/games/fortune)
+/usr/bin/env figlet "$(hostname)"
+echo -e "$G$SAY"

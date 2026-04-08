@@ -1,0 +1,48 @@
+global
+  log /dev/log  local0
+  log /dev/log  local1 notice
+  chroot /var/lib/haproxy
+  stats socket /run/haproxy/admin.sock mode 660 level admin
+  stats timeout 30s
+  user haproxy
+  group haproxy
+  daemon
+
+defaults
+  log     global
+  mode    tcp
+  option  tcplog
+  option  dontlognull
+  timeout connect 5000
+  timeout client  50000
+  timeout server  50000
+
+frontend stats
+  bind *:20000
+  mode http
+  stats uri /
+  stats show-legends
+  stats auth admin:{{ haproxy_stats_password }}
+  no log
+
+# ─── HTTP Ingress ─────────────────────────────────────────────────────────────
+frontend http_ingress
+  bind *:80
+  mode tcp
+  default_backend workers_http
+
+backend workers_http
+  mode tcp
+  balance roundrobin
+  server app-development {{ private_ips['app-development'] }}:80 check
+
+# ─── HTTPS Ingress ────────────────────────────────────────────────────────────
+frontend https_ingress
+  bind *:443
+  mode tcp
+  default_backend workers_https
+
+backend workers_https
+  mode tcp
+  balance roundrobin
+  server app-development {{ private_ips['app-development'] }}:443 check

@@ -1,0 +1,13 @@
+---
+
+- name: reload sshd
+  service:
+    name: ssh
+    state: reloaded
+
+- name: Reload systemd and restart the service
+  systemd:
+    daemon_reload: yes
+    state: restarted
+    name: custom-network-route
+  when: inventory_hostname in groups.get("networkroute", [])

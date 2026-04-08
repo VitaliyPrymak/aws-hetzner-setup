@@ -1,0 +1,71 @@
+---
+# Edition can be one of: 'ce' (Community Edition) or 'ee' (Enterprise Edition).
+docker_edition: 'ce'
+docker_packages:
+  - "docker-{{ docker_edition }}"
+  - "docker-{{ docker_edition }}-cli"
+  - "docker-{{ docker_edition }}-rootless-extras"
+  - "containerd.io"
+docker_packages_state: present
+
+# Service options.
+docker_service_manage: true
+docker_service_state: started
+docker_service_enabled: true
+docker_restart_handler_state: restarted
+
+# Enable repo setup
+docker_add_repo: true
+
+# Docker repo URL.
+docker_repo_url: https://download.docker.com/linux
+
+# Used only for Debian/Ubuntu. Switch 'stable' to 'nightly' if needed.
+docker_apt_release_channel: stable
+docker_apt_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+docker_apt_repository: "deb [arch={{ docker_apt_arch }} signed-by=/etc/apt/keyrings/docker.asc] {{ docker_repo_url }}/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} {{ docker_apt_release_channel }}"
+docker_apt_ignore_key_error: false
+docker_apt_gpg_key: "{{ docker_repo_url }}/{{ ansible_distribution | lower }}/gpg"
+docker_apt_gpg_key_checksum: "sha256:1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570"
+
+# A list of users who will be added to the docker group.
+docker_users:
+  - "{{ ansible_user }}"
+
+# Docker daemon options as a dict
+docker_daemon_options:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+  ipv6: false
+  iptables: true
+  live-restore: true
+  # fixed-cidr-v6: "fd00:dead:beef::/48"
+  experimental: false
+  # ip6tables: true 
+  # mtu: 1450 
+
+compose_project_dir: "/opt/app"
+
+docker_env_templates:
+  - src: ".env-frontend.j2"
+    dest: "{{ compose_project_dir }}/.env-frontend"
+  - src: ".env-admin.j2"
+    dest: "{{ compose_project_dir }}/.env-admin"
+  - src: ".env-backend.j2"
+    dest: "{{ compose_project_dir }}/.env-backend"
+  - src: ".env-database.j2"
+    dest: "{{ compose_project_dir }}/.env-database"
+
+# Set both (e.g. in vault) if images are private on Docker Hub / other registry.
+docker_registry_username: ""
+docker_registry_password: ""
+docker_registry_url: ""
+
+# Staging compose images — override in group_vars; no real org/user baked in.
+compose_image_frontend: "ghcr.io/your-org/app-frontend:latest"
+compose_image_admin: "ghcr.io/your-org/app-admin:latest"
+compose_image_api: "ghcr.io/your-org/app-api:latest"
+compose_network_name: "app-internal"
+compose_postgres_volume: "app-postgres-data"

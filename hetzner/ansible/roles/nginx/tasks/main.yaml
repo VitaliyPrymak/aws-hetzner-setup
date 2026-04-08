@@ -1,0 +1,98 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+      - python3-certbot-dns-cloudflare
+      - ufw
+    state: present
+    update_cache: yes
+  notify: restart nginx
+
+- name: Create Cloudflare secrets directory
+  file:
+    path: "/root/.cloudflare"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Create Cloudflare API credentials file
+  copy:
+    dest: "/root/.cloudflare/cloudflare.ini"
+    content: |
+      dns_cloudflare_api_token = {{ cloudflare_api_token }}
+    mode: "0600"
+
+- name: Create web root for Certbot challenge
+  file:
+    path: /var/www/certbot
+    state: directory
+    mode: "0755"
+
+- name: Generate Let’s Encrypt DH parameters file
+  command: openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+  args:
+    creates: "/etc/letsencrypt/ssl-dhparams.pem"
+  notify: restart nginx
+
+- name: Ensure DH parameters file permissions
+  file:
+    path: "/etc/letsencrypt/ssl-dhparams.pem"
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart nginx
+
+- name: Copy Cloudflare configuration
+  template:
+    src: cloudflare.conf.j2
+    dest: /etc/nginx/conf.d/cloudflare.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart nginx
+
+- name: Create SSL options configuration for Nginx
+  copy:
+    dest: "/etc/letsencrypt/options-ssl-nginx.conf"
+    content: |
+      ssl_session_cache shared:SSL:10m;
+      ssl_session_timeout 1d;
+      ssl_session_tickets off;
+      ssl_protocols TLSv1.2 TLSv1.3;
+      ssl_prefer_server_ciphers on;
+      ssl_ciphers EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH;
+      ssl_stapling on;
+      ssl_stapling_verify on;
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart nginx
+
+- name: Obtain Let’s Encrypt SSL certificate
+  command: >
+    certbot certonly --dns-cloudflare --dns-cloudflare-credentials /root/.cloudflare/cloudflare.ini
+    --dns-cloudflare-propagation-seconds 180
+    -d {{ prima_domain }} -d {{ admin_domain }} --non-interactive --agree-tos --email {{ devops_admin_email }}
+  args:
+    creates: "{{ letsencrypt_cert_dir }}/fullchain.pem"
+  register: certbot_result
+  failed_when: certbot_result.rc != 0
+  notify: restart nginx
+
+- name: Deploy Nginx configuration
+  template:
+    src: nginx.conf.j2
+    dest: "{{ nginx_conf_dir }}/{{ prima_domain }}"
+    mode: "0644"
+  notify: restart nginx
+
+- name: Enable Nginx site
+  file:
+    src: "{{ nginx_conf_dir }}/{{ prima_domain }}"
+    dest: "{{ nginx_enabled_dir }}/{{ prima_domain }}"
+    state: link
+  notify: restart nginx

@@ -1,0 +1,55 @@
+- name: Install aptitude
+  apt:
+    name: aptitude
+    state: latest
+    update_cache: true
+
+- name: Install required system packages
+  apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - python3-pip
+      - virtualenv
+      - python3-setuptools
+    state: latest
+    update_cache: true
+
+- name: Install Docker Compose Plugin (v2)
+  apt:
+    name: docker-compose-plugin
+    state: present
+    update_cache: true
+  when: docker_compose_plugin | default(false)
+
+- name: Add Docker GPG apt Key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker Repository
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu jammy stable
+    state: present
+
+- name: Update apt and install docker-ce
+  apt:
+    name: docker-ce
+    state: latest
+    update_cache: true
+
+- name: Install Docker SDK for Python (via apt)
+  apt:
+    name: python3-docker
+    state: present
+
+- name: Configure Docker daemon options
+  copy:
+    dest: /etc/docker/daemon.json
+    content: "{{ docker_daemon_options | to_nice_json }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart docker

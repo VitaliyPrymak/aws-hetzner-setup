@@ -1,0 +1,29 @@
+local {{ vpn.vpn_ip }}
+port {{ vpn.vpn_port }}
+proto {{ vpn.vpn_protocol }}
+dev {{ vpn.vpn_tun }}
+
+ca server/ca.crt
+cert server/server.crt
+key server/server.key
+
+dh server/dh.pem
+auth SHA512
+tls-crypt server/tc.key
+topology subnet
+server {{ vpn.vpn_server_cidr }}
+server-ipv6 {{ vpn.vpn_ipv6_server_cidr }}
+client-config-dir ccd
+
+reneg-sec 0
+ifconfig-pool-persist ipp.txt
+keepalive 10 120
+cipher AES-256-CBC
+user nobody
+group nogroup
+persist-key
+persist-tun
+status /var/log/openvpn/vpn_status.log
+verb 3
+crl-verify server/crl.pem
+explicit-exit-notify

@@ -1,0 +1,112 @@
+upstream app_frontend {
+    server 127.0.0.1:{{ app_compose_frontend_port | default(8081) }};
+    keepalive 16;
+}
+
+upstream app_api {
+    server {{ nginx_upstream_api_host }}:{{ nginx_upstream_api_port }};
+    keepalive 16;
+}
+
+upstream app_admin {
+    server {{ nginx_upstream_admin_host }}:{{ nginx_upstream_admin_port }};
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ app_domain }} {{ admin_domain }};
+
+{% for cidr in nginx_trusted_cidrs %}
+    allow {{ cidr }};
+{% endfor %}
+    deny all;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{ app_domain }};
+
+    ssl_certificate {{ letsencrypt_cert_dir }}/fullchain.pem;
+    ssl_certificate_key {{ letsencrypt_cert_dir }}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    access_log /var/log/nginx/{{ app_domain }}.access.log;
+    error_log  /var/log/nginx/{{ app_domain }}.error.log;
+    include /etc/nginx/conf.d/cloudflare.conf;
+    ignore_invalid_headers off;
+    client_max_body_size 20m;
+
+{% for cidr in nginx_trusted_cidrs %}
+    allow {{ cidr }};
+{% endfor %}
+    deny all;
+
+    location ^~ /api/ {
+        proxy_pass http://app_api;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    location / {
+        proxy_pass http://app_frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{ admin_domain }};
+
+    ssl_certificate {{ letsencrypt_cert_dir }}/fullchain.pem;
+    ssl_certificate_key {{ letsencrypt_cert_dir }}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    access_log /var/log/nginx/{{ admin_domain }}.access.log;
+    error_log  /var/log/nginx/{{ admin_domain }}.error.log;
+    include /etc/nginx/conf.d/cloudflare.conf;
+    ignore_invalid_headers off;
+    client_max_body_size 20m;
+
+{% for cidr in nginx_trusted_cidrs %}
+    allow {{ cidr }};
+{% endfor %}
+    deny all;
+
+    location / {
+        proxy_pass http://app_admin;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+}

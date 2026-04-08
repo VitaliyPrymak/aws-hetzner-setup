@@ -1,0 +1,159 @@
+---
+- name: Install
+  apt: name={{ item }} state=present update_cache=yes cache_valid_time=3600
+  with_items:
+    - sudo
+    - zsh
+    - figlet
+    - fortune
+    - htop
+    - unzip
+    - curl
+    - apt-transport-https
+    - git
+    - wget
+    - net-tools
+    - ca-certificates
+
+- name: Remove postfix package
+  apt:
+    name: postfix
+    state: absent
+
+- name: create path sshd
+  file:
+    path: /var/run/sshd
+    state: directory
+
+- name: Ensure localisation files for '{{ system_config_system_locale }}' are available
+  locale_gen:
+    name: "{{ system_config_system_locale }}"
+    state: present
+
+- name: Ensure localisation files for '{{ system_config_system_language }}' are available
+  locale_gen:
+    name: "{{ system_config_system_language }}"
+    state: present
+
+- name: Get current locale and language configuration
+  command: localectl status
+  register: locale_status
+  changed_when: false
+
+- name: Parse 'LANG' from current locale and language configuration
+  set_fact:
+    locale_lang: "{{ locale_status.stdout | regex_search('LANG=([^\n]+)', '\\1') | first }}"
+
+- name: Parse 'LANGUAGE' from current locale and language configuration
+  set_fact:
+    locale_language: "{{ locale_status.stdout | regex_search('LANGUAGE=([^\n]+)', '\\1') | default([locale_lang], true) | first }}"
+
+- name: Configure locale to '{{ system_config_system_locale }}' and language to '{{ system_config_system_language }}'
+  command: localectl set-locale LANG={{ system_config_system_locale }} LANGUAGE={{ system_config_system_language }}
+  changed_when: locale_lang != system_config_system_locale or locale_language != system_config_system_language
+
+- name: Set timezone to Europe/Warsaw
+  community.general.timezone:
+    name: Europe/Warsaw
+
+- name: Add the user
+  ansible.builtin.user:
+    name: "{{ item.user }}"
+    shell: "{{ item.ssh | default('/bin/bash') }}"
+    groups: sudo
+    append: yes
+  with_items:
+     - "{{ users }}"
+
+- name: Set authorized key
+  authorized_key:
+    user: "{{ item.user }}"
+    state: present
+    key: "{{ item.sshkey }}"
+  with_items: "{{ users | default([]) }}"
+
+
+- name: Set authorized key
+  authorized_key:
+    user: "root"
+    state: present
+    key: "{{ item.sshkey }}"
+  with_items: "{{ users | default([]) }}"
+
+- name: Set authorized key
+  authorized_key:
+    user: "vitalla"
+    state: present
+    key: "{{ item.sshkey }}"
+  with_items: "{{ root | default([]) }}"
+
+- name: Ansible delete multiple file motd
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/update-motd.d/10-uname
+    - /etc/motd
+    - /etc/update-motd.d/00-header
+    - /etc/update-motd.d/10-help-text
+    - /etc/update-motd.d/50-motd-news
+    - /etc/update-motd.d/91-release-upgrade
+    - /etc/update-motd.d/50-landscape-sysinfo
+    - /etc/update-motd.d/85-fwupd
+    - /etc/update-motd.d/88-esm-announce
+    - /etc/update-motd.d/91-contract-ua-esm-status
+    - /etc/update-motd.d/92-unattended-upgrades
+    - /etc/update-motd.d/95-hwe-eol
+    - /etc/update-motd.d/97-overlayroot
+    - /etc/update-motd.d/98-fsck-at-reboot
+    - /etc/update-motd.d/99-one-click
+    - /etc/update-motd.d/90-updates-available
+    - /etc/update-motd.d/98-reboot-required
+
+- name: Add 10-hostname script
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/update-motd.d/{{ item }}"
+    force: yes
+    mode: a+x
+  with_items:
+    - 10-hostname
+    - 20-sysinfo
+    - 35-diskspace
+
+- name: Allow 'sudo' group to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%sudo'
+    line: '%sudo    ALL=NOPASSWD: ALL'
+    validate: 'visudo -cf %s'
+
+- name: Configure sshd
+  lineinfile:
+    path: "/etc/ssh/sshd_config"
+    regex: "^(#)?{{item.key}}"
+    line: "{{item.key}} {{item.value}}"
+    state: present
+    validate: sshd -t -f %s
+  loop:
+    - { key: "PermitRootLogin", value: "yes" }
+    - { key: "PasswordAuthentication", value: "no" }
+  notify:
+    - reload sshd
+
+- name: Set configuration route gw
+  ansible.builtin.template:
+    src: custom-network-route.service.j2
+    mode: '0644'
+    dest: /etc/systemd/system/custom-network-route.service
+  notify: Reload systemd and restart the service
+  when: inventory_hostname in groups.get("networkroute", [])
+
+- name: Start and enable the custom systemd service
+  systemd:
+    name: custom-network-route
+    state: started
+    enabled: yes
+  notify: Reload systemd and restart the service
+  when: inventory_hostname in groups.get("networkroute", [])

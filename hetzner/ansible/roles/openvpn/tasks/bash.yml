@@ -1,0 +1,27 @@
+---
+- name: Create scripts directory
+  file:
+    path: /certs/scripts/openvpn
+    state: directory
+    mode: '0777'
+
+- name: Deploy add_user.sh
+  copy:
+    src: add_user.sh
+    dest: /certs/scripts/openvpn/add_user.sh
+    force: yes
+    mode: a+x
+
+- name: Deploy create_user.sh
+  copy:
+    src: create_user.sh
+    dest: /certs/scripts/openvpn/create_user.sh
+    force: yes
+    mode: a+x
+
+- name: Deploy del_user.sh
+  copy:
+    src: del_user.sh
+    dest: /certs/scripts/openvpn/del_user.sh
+    force: yes
+    mode: a+x

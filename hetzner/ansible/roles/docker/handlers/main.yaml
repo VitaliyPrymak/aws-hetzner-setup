@@ -1,0 +1,11 @@
+- name: restart docker
+  service:
+    name: docker
+    state: restarted
+
+- name: restart docker-compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_project_dir | default('/opt/app') }}"
+    state: present
+    pull: always
+    recreate: always
